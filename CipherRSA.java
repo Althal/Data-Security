@@ -1,5 +1,5 @@
 
-package block.cipher;
+package podL3;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -8,7 +8,7 @@ import java.security.PublicKey;
 import java.util.Random;
 import javax.crypto.Cipher;
 
-public class BlockCipherRSA {
+public class CipherRSA {
     
     private static final int keySize = 4096;
     private static final String cipherInstance = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding";
@@ -17,34 +17,12 @@ public class BlockCipherRSA {
     private static PrivateKey privateKey;
 
     public static void main(String[] args) throws Exception {
-        
-        //testCharSwap();
-        
-        // Maksymalna długość 382 bajtów
-        for(int i=16; i<382-16; i+=16){
+
+        // Maksymalna długość 446 bajtów
+        for(int i=16; i<446/Character.BYTES; i+=16){
             System.out.println("Długość: " + i);
             cipher(generateMessage(i));
         }
-    }
-    
-    private static void testCharSwap() throws Exception {
-        System.out.println("Test zamiany znaków");
-        init();
-        String mess = "This is not encrypted text";
-        
-        byte[] enc = encrypt(mess);
-        
-        int charIndex = 123;
-        if(charIndex >= enc.length) charIndex = charIndex % enc.length;
-        byte b = enc[charIndex];
-        
-        enc[charIndex] = enc[charIndex-1];
-        enc[charIndex-1] = b;
-        
-        String dec = decrypt(enc);
-        System.out.println("Wiadomość oryginalna:   " + mess);
-        System.out.println("Wiadomość po działaniu: " + dec);
-        System.out.println();
     }
     
     private static void cipher(String plainText) throws Exception {

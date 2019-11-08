@@ -1,10 +1,9 @@
 
-package block.cipher;
+package podL3;
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+import java.nio.charset.Charset;
+import java.security.MessageDigest;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Base64.Decoder;
 import java.util.Base64.Encoder;
@@ -12,91 +11,105 @@ import java.util.Random;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 
-public class BlockCipherAES {
+public class CipherAES {
     
-    private static final int keySize = 4096;
     private static final String cipherInstance = "AES/ECB/NoPadding";
+    private static final String myKey = "ABCDE";
 
-    private static PublicKey publicKey;
-    private static PrivateKey privateKey;
+    private static SecretKeySpec secretKey;
+    private static byte[] key;
 
     public static void main(String[] args) throws Exception {
         
-        //testCharSwap();
+        testCharSwap();
         
-        // Maksymalna długość 382 bajtów
-        for(int i=16; i<382-16; i+=16){
-            System.out.println("Długość: " + i);
+        /*for(int i=32; i<382/Character.BYTES; i++){
             cipher(generateMessage(i));
-        }
+        }*/
+    }
+    
+    private static void init(){
+        try {
+            key = myKey.getBytes("UTF-8");
+            MessageDigest sha = MessageDigest.getInstance("SHA-1");
+            key = sha.digest(key);
+            key = Arrays.copyOf(key, 16); 
+            secretKey = new SecretKeySpec(key, "AES");
+        } 
+        catch (Exception e) {
+            e.printStackTrace();
+        } 
     }
     
     private static void testCharSwap() throws Exception {
         System.out.println("Test zamiany znaków");
         init();
-        String mess = "This is not encrypted text";
+        String mess = checkMessage("This is not encrypted text");
         
-        byte[] enc = encrypt(mess);
+        String enc = encrypt(mess);
         
         int charIndex = 123;
-        if(charIndex >= enc.length) charIndex = charIndex % enc.length;
-        byte b = enc[charIndex];
+        if(charIndex >= enc.length()) charIndex = charIndex % enc.length();
         
-        enc[charIndex] = enc[charIndex-1];
-        enc[charIndex-1] = b;
+        byte[] encByte = enc.getBytes();
+        byte b = encByte[charIndex];
         
-        String dec = decrypt(enc);
+        encByte[charIndex] = encByte[charIndex-1];
+        encByte[charIndex-1] = b;
+        
+        String dec = decrypt(new String(encByte));
         System.out.println("Wiadomość oryginalna:   " + mess);
         System.out.println("Wiadomość po działaniu: " + dec);
         System.out.println();
     }
     
     private static void cipher(String plainText) throws Exception {
-        init();
+        init();        
+        plainText = checkMessage(plainText);
         
-        byte[] cipher = encrypt(plainText);
+        String cipher = encrypt(plainText);
         String plain = decrypt(cipher);
         
         System.out.println("Czy poprawnie rozszyfrowano: " + plain.equals(plainText));
         System.out.println();
     }
     
+    private static String checkMessage(String message){
+        int length = message.length();
+        String ret = message;
+        for(int i = 0; i<16-length%16; i++){
+            ret = ret + " ";
+        }
+        return ret;
+    }
+    
     private static String generateMessage(int bytes){
         long start = System.nanoTime();
         
-        StringBuilder ret = new StringBuilder();
         Random random = new Random();
-        for(int i=0; i<bytes; i++) ret.append((char)(random.nextInt()%Byte.MAX_VALUE));
+        byte[] retBytes = new byte[bytes];
+        random.nextBytes(retBytes);
+        String ret = new String(retBytes, Charset.forName("UTF-8"));
         
         long stop = System.nanoTime();
+        System.out.println("Wiadomość: " + ret + " " + ret.length());
         System.out.println("Czas generowania wiadomości: " + (stop-start) + " ns");
         
-        return ret.toString();
+        return ret;
     }
     
-    private static void init() throws Exception {
-        long start = System.currentTimeMillis();
-        
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-        kpg.initialize(keySize);
-        
-        KeyPair kp = kpg.generateKeyPair();
-        publicKey = kp.getPublic();
-        privateKey = kp.getPrivate();
-        
-        long stop = System.currentTimeMillis();
-        System.out.println("Czas inicjacji kluczy: " + (stop-start)/1000.0 + " s");
-    }
     
-    private static byte[] encrypt(String message) throws Exception {
+    
+    
+    private static String encrypt(String message) throws Exception {
         long start = System.nanoTime();
-        
-        SecretKeySpec sks = new SecretKeySpec(publicKey.getEncoded(), "AES");
+
         Cipher cipher = Cipher.getInstance(cipherInstance);
-        cipher.init(Cipher.ENCRYPT_MODE, sks);
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey);
         
         Encoder encoder = Base64.getEncoder();
-        byte[] ret = encoder.encode(message.getBytes());
+        System.out.println(message.length());
+        String ret = encoder.encodeToString(cipher.doFinal(message.getBytes("UTF-8")));
         
         long stop = System.nanoTime();
         System.out.println("Czas szyfrowania: " + (stop-start) + " ns");
@@ -104,13 +117,13 @@ public class BlockCipherAES {
         return ret;
     }
     
-    private static String decrypt(byte[] message) throws Exception {
+    private static String decrypt(String message) throws Exception {
         long start = System.nanoTime();
+
+        Cipher cipher = Cipher.getInstance(cipherInstance);
+        cipher.init(Cipher.DECRYPT_MODE, secretKey);
         
         Decoder decoder = Base64.getDecoder();
-        SecretKeySpec sks = new SecretKeySpec(publicKey.getEncoded(), "AES");
-        Cipher cipher = Cipher.getInstance(cipherInstance);
-        cipher.init(Cipher.DECRYPT_MODE, sks);
         String ret = new String(cipher.doFinal(decoder.decode(message)));
         
         long stop = System.nanoTime();
