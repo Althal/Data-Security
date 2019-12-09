@@ -1,5 +1,5 @@
 
-package block.cipher;
+package podL4;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -8,23 +8,24 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class CipherDiffieHellman {
     
-    private static long[] pq = new long[2];
+    private static int[] ng = new int[2];
     private static int secretValue;
-    private static String filePath = "C:\\Test\\";
+    private static String filePath = "D:\\Test\\";
     private static int userId = 1;
     
     public static void main(String[] args) throws Exception {
         secretValue = getRandomSecret();
         if(!readPqFromFile()) {
-            pq = generatePQ(100);
+            ng = getNG(100);
             userId = 0;
-            writePqToFile();
+            writeNgToFile();
         }
         
         long A = generateA();
@@ -45,13 +46,13 @@ public class CipherDiffieHellman {
     
     private static long generateS(long b){
         BigInteger a = new BigInteger(String.valueOf(b));
-        a = a.pow(secretValue).mod(new BigInteger(String.valueOf(pq[1])));
+        a = a.pow(secretValue).mod(new BigInteger(String.valueOf(ng[0])));
         return a.longValue();
     }
     
     private static long generateA(){
-        BigInteger a = new BigInteger(String.valueOf(pq[1]));
-        a = a.pow(secretValue).mod(new BigInteger(String.valueOf(pq[0])));
+        BigInteger a = new BigInteger(String.valueOf(ng[1]));
+        a = a.pow(secretValue).mod(new BigInteger(String.valueOf(ng[0])));
         return a.longValue();
     }
     
@@ -70,7 +71,7 @@ public class CipherDiffieHellman {
             String line;
             int index = 0;
             while((line = br.readLine()) != null){
-                pq[index++] = Long.parseLong(line);
+                ng[index++] = Integer.parseInt(line);
             }
             return true;
             
@@ -100,11 +101,11 @@ public class CipherDiffieHellman {
         return ret;
     }
     
-    private static void writePqToFile(){
+    private static void writeNgToFile(){
         try {
             PrintWriter pw = new PrintWriter(filePath + "keys.txt");
-            pw.println(pq[0]);
-            pw.print(pq[1]);
+            pw.println(ng[0]);
+            pw.print(ng[1]);
             pw.close();
             System.out.println("Zapisano PQ w pliku");
         } catch (FileNotFoundException ex) {
@@ -124,25 +125,56 @@ public class CipherDiffieHellman {
         }
     }
     
-    private static long[] generatePQ(long minValue){
-        long[] ret = new long[2];
-        long val = minValue;
-        int index = 0;
+    private static int[] getNG(int minValue){
+        int n = getPrime(minValue);
+        int g = getPrimaryElement(n);
+        
+        while(g == -1){
+            n = getPrime(n++);
+            g = getPrimaryElement(n);
+        }
+    
+        return new int[]{n,g};
+    }
+    
+    private static int getPrime(int val){
         while(true){
-            boolean isPrime = true;
-            for(int i=3; i<val/2; i+=2){
-                if(val%i == 0){
-                    isPrime=false;
-                    break;
-                }
-            }
+            boolean isPrime = isPrime(val);
             if(isPrime){
-                ret[index++]=val;
-                if(index == 2)break;
+                return val;
             }
             val++;
         }
-                
-        return ret;
+    }
+    
+    private static boolean isPrime(int val){
+        if(val%2 == 0) return false;
+        
+        for(int r=3; r<val/2; r+=2){
+            if(val%r == 0){
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    private static int getPrimaryElement(int n){        
+        ArrayList<Integer> rests;
+        for(int i = 2; i<n; i++){
+            rests = new ArrayList<>();
+            int power = 1;
+            while(true){
+                int rest = new BigInteger(String.valueOf(i)).pow(power++).mod(new BigInteger(String.valueOf(n))).intValue();
+                if(!rests.contains(rest)){
+                    rests.add(rest);
+                }
+                else{
+                    if(n == rests.size()+1) return i;
+                    else break;
+                }
+            }
+        }
+        return -1;
     }
 }
